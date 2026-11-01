@@ -24,6 +24,7 @@ ACTIONS = ["REORDER", "STOCK", "CLEAR", "REVIEW", "ADJUST", "OK"]
 _run_lock = threading.Lock()
 _run_state = {"running": False, "last_error": None, "last_run_id": None}
 
+
 def start_run_async(settings: Settings | None = None) -> bool:
     """Run the pipeline in a background thread. False if one is already running."""
     if not _run_lock.acquire(blocking=False):
@@ -44,6 +45,7 @@ def start_run_async(settings: Settings | None = None) -> bool:
 
     threading.Thread(target=job, daemon=True).start()
     return True
+
 
 def _clean(df: pd.DataFrame) -> list[dict]:
     return df.replace([np.inf, -np.inf], None).astype(object).where(df.notna(), None).to_dict("records")
@@ -280,28 +282,9 @@ def create_app(settings: Settings | None = None) -> Flask:
 
     @app.post("/api/runs")
     @require_key
-    @app.post("/api/runs")
-    @require_key
     def api_trigger():
         if not start_run_async(settings):
             return jsonify({"status": "already running"}), 409
-        if request.form:
-            return redirect(url_for("runs"))
-        return jsonify({"status": "started"}), 202
-
-        def job():
-            from ..pipeline import run_pipeline
-            _run_state.update(running=True, last_error=None)
-            try:
-                res = run_pipeline(load_settings())
-                _run_state["last_run_id"] = res["run_id"]
-            except Exception as exc:          # surfaced on /runs
-                _run_state["last_error"] = str(exc)
-            finally:
-                _run_state["running"] = False
-                _run_lock.release()
-
-        threading.Thread(target=job, daemon=True).start()
         if request.form:
             return redirect(url_for("runs"))
         return jsonify({"status": "started"}), 202
