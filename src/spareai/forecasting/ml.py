@@ -22,7 +22,11 @@ def _make_model():
         return lgb.LGBMRegressor(objective="poisson", n_estimators=300, learning_rate=0.05,
                                  num_leaves=15, min_child_samples=30, subsample=0.8,
                                  colsample_bytree=0.8, verbose=-1, random_state=42)
-    except ImportError:
+    except (ImportError, OSError) as exc:
+        # OSError: LightGBM installed but its native library (libgomp) is missing,
+        # common on slim Docker images - fall back instead of crashing the run.
+        if isinstance(exc, OSError):
+            log.warning("LightGBM unavailable (%s); using scikit-learn GBM", exc)
         from sklearn.ensemble import HistGradientBoostingRegressor
         return HistGradientBoostingRegressor(loss="poisson", max_iter=250, learning_rate=0.05,
                                              max_leaf_nodes=15, min_samples_leaf=30,

@@ -1,0 +1,10 @@
+# Render Blueprint: New > Blueprint > select this repo
+services:
+  - type: web
+    name: spareai
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: SPAREAI_API_KEY
+        generateValue: true     # protects POST /api/runs

@@ -85,11 +85,19 @@ def validate(settings):
 @cli.command()
 @click.option("--host", default=None, help="Default: server.host in settings.yaml")
 @click.option("--port", default=None, type=int, help="Default: server.port in settings.yaml (8010)")
+@click.option("--run-on-start", is_flag=True,
+              help="Start the analysis in the background if no results exist (cloud deploys)")
 @click.pass_obj
-def serve(settings, host, port):
+def serve(settings, host, port, run_on_start):
     """Start the dashboard and REST API."""
+    import os
     import socket
-    from .web.app import create_app
+    from .storage.warehouse import Warehouse
+    from .web.app import create_app, start_run_async
+    # Cloud platforms (Render, Railway, Heroku, Cloud Run) inject $PORT
+    # and need the app on 0.0.0.0.
+    if os.environ.get("PORT") and not port:
+        port, host = int(os.environ["PORT"]), host or "0.0.0.0"
     host = host or settings.get("server.host", "127.0.0.1")
     port = int(port or settings.get("server.port", 8010))
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -99,6 +107,9 @@ def serve(settings, host, port):
                         f"or set SPAREAI_PORT / server.port in config/settings.yaml", fg="red")
             sys.exit(1)
     app = create_app(settings)
+    if run_on_start and not Warehouse(settings.path("warehouse.path")).latest_run():
+        click.echo("No results yet - starting analysis in the background")
+        start_run_async(settings)
     try:
         from waitress import serve as wserve  # production WSGI server if installed
         click.echo(f"SpareAI on http://{host}:{port} (waitress)")
