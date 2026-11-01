@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}SpareAI{% endblock %} · SpareAI</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body>
+<header>
+  <div class="brand">Spare<span>AI</span></div>
+  <nav>
+    {% set ep = request.endpoint %}
+    <a href="{{ url_for('overview') }}" class="{{ 'active' if ep=='overview' }}">Overview</a>
+    <a href="{{ url_for('recommendations') }}" class="{{ 'active' if ep=='recommendations' }}">Recommendations</a>
+    <a href="{{ url_for('quality') }}" class="{{ 'active' if ep=='quality' }}">Data quality</a>
+    <a href="{{ url_for('models') }}" class="{{ 'active' if ep=='models' }}">Models &amp; backtest</a>
+    <a href="{{ url_for('runs') }}" class="{{ 'active' if ep=='runs' }}">Runs</a>
+  </nav>
+  <div class="meta">{{ company }}{% if run %} · data as of {{ run.as_of_date }} · {{ run.run_id }}{% endif %}</div>
+</header>
+<main>{% block content %}{% endblock %}</main>
+</body></html>

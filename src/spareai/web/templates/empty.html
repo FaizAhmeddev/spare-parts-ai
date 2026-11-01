@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block content %}
+<div class="card"><h1>No analysis yet</h1><p class="sub">Run the pipeline once to load data and generate recommendations.</p>
+<form method="post" action="{{ url_for('api_trigger') }}"><input type="hidden" name="go" value="1"><button>Run analysis now</button></form>
+<p class="muted">or from a terminal: <code>python -m spareai run</code></p></div>
+{% endblock %}

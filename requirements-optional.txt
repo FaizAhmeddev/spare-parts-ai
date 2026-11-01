@@ -1,0 +1,8 @@
+# Faster ML forecaster (auto-detected)
+lightgbm>=4.0
+# Live database source (plus your DB driver: pyodbc / psycopg2-binary / oracledb)
+sqlalchemy>=2.0
+# Production web server for `spareai serve`
+waitress>=3.0
+# Tests
+pytest>=7

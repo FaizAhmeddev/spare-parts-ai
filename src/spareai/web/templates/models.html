@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% block title %}Models & backtest{% endblock %}
+{% block content %}
+<h1>Models &amp; backtest</h1><p class="sub">How the forecasts and policies were chosen, and how they performed on data they had not seen.</p>
+<div class="grid c3">
+<div class="card"><h2>Forecast accuracy (out-of-sample)</h2>
+<p class="muted" style="margin-top:-6px">WAPE of 3-month cumulative demand in the last held-out window. Lower is better.</p>
+<table><thead><tr><th>Method</th><th class="num">WAPE</th></tr></thead><tbody>
+{% for m, v in acc %}<tr><td>{{ '<b>%s</b>'|format(m)|safe if m.startswith('SpareAI') or m=='ensemble' else m }}</td><td class="num">{{ v|pct }}</td></tr>{% endfor %}</tbody></table></div>
+<div class="card"><h2>Method selected per part-site</h2>{{ mix_chart|safe }}</div>
+<div class="card"><h2>Demand patterns (SBC)</h2>{{ pattern_chart|safe }}
+<h2 style="margin-top:16px">ABC × XYZ (part-sites)</h2><table class="heat"><thead><tr><th></th>{% for c in abcxyz.columns %}<th style="text-align:center">{{ c }}</th>{% endfor %}</tr></thead><tbody>
+{% for idx, row in abcxyz.iterrows() %}<tr><th>{{ idx }}</th>{% for v in row %}<td>{{ v }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+</div>
+{% if bt %}<div class="card section"><h2>Inventory policy simulation (cutoff {{ s.backtest_cutoff }}, 12 months replay)</h2><div class="scroll"><table><thead><tr>
+{% for k in bt[0].keys() if k!='run_id' %}<th class="{{ '' if k=='policy' else 'num' }}">{{ k|replace('_',' ') }}</th>{% endfor %}</tr></thead><tbody>
+{% for r in bt %}<tr>{% for k, v in r.items() if k!='run_id' %}<td class="{{ '' if k=='policy' else 'num' }}">{% if k=='fill_rate' %}{{ v|pct }}{% elif 'usd' in k %}{{ v|money }}{% elif k=='policy' %}{{ v }}{% else %}{{ v|num }}{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div></div>{% endif %}
+<div class="card section"><h2>Real stockouts in the backtest year</h2><div class="scroll" style="max-height:420px"><table><thead><tr><th>ID</th><th>Date</th><th>Part</th><th>Site</th><th>VED</th><th class="num">Downtime h</th><th class="num">Cost</th><th class="num">AI ROP</th><th>AI had stock</th><th>Current had stock</th></tr></thead><tbody>
+{% for r in val %}<tr><td>{{ r.stockout_id }}</td><td>{{ r.event_date }}</td><td><a href="{{ url_for('part', part_id=r.part_id) }}">{{ r.part_id }}</a></td><td>{{ r.site_id }}</td><td>{{ r.part_criticality_ved }}</td><td class="num">{{ r.downtime_hours_due_to_stockout|num(1) }}</td><td class="num">{{ r.downtime_cost_usd|money }}</td><td class="num">{{ r.ai_rop_at_cutoff|num }}</td><td>{{ '✔' if r.ai_had_stock else '✘' }}</td><td>{{ '✔' if r.legacy_had_stock else '✘' }}</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

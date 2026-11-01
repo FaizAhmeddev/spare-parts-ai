@@ -1,0 +1,162 @@
+# =====================================================================
+# SpareAI - Spare Parts Inventory Intelligence
+# Central configuration. Every value can be overridden with an
+# environment variable using ${VAR_NAME} or ${VAR_NAME:default}.
+# =====================================================================
+
+project:
+  name: SpareAI
+  company: "Demo Manufacturing Co."
+  currency: USD
+
+# ---------------------------------------------------------------------
+# DATA SOURCE
+# Switch `type` to move from Excel (prototype) to a live database (ERP /
+# CMMS replica). The analytics engine does not change - only the source.
+# ---------------------------------------------------------------------
+source:
+  type: ${SPAREAI_SOURCE:excel}          # excel | csv | sql
+
+  excel:
+    path: data/raw
+    files:
+      part_master:         01_part_master.xlsx
+      suppliers:           02_suppliers.xlsx
+      assets:              03_assets.xlsx
+      bom:                 04_bom.xlsx
+      inventory:           05_inventory_stock.xlsx
+      consumption:         06_consumption_history.xlsx
+      work_orders:         07_work_orders.xlsx
+      purchase_orders:     08_purchase_orders.xlsx
+      maintenance_plans:   09_maintenance_plans.xlsx
+      stockouts:           10_stockout_log.xlsx
+
+  csv:
+    path: data/csv                         # one <table_name>.csv per table
+
+  sql:
+    # Any SQLAlchemy URL: postgresql+psycopg2://user:pw@host/db,
+    # mssql+pyodbc://..., oracle+oracledb://..., sqlite:///file.db
+    url: ${SPAREAI_DB_URL:}
+    # Map each logical table to a query on your ERP/CMMS. Column aliases
+    # must match docs/DATA_CONTRACT.md. Examples for SAP PM / Maximo are
+    # in docs/INTEGRATION_GUIDE.md.
+    queries:
+      part_master:       "SELECT * FROM spareai_part_master"
+      suppliers:         "SELECT * FROM spareai_suppliers"
+      assets:            "SELECT * FROM spareai_assets"
+      bom:               "SELECT * FROM spareai_bom"
+      inventory:         "SELECT * FROM spareai_inventory"
+      consumption:       "SELECT * FROM spareai_consumption"
+      work_orders:       "SELECT * FROM spareai_work_orders"
+      purchase_orders:   "SELECT * FROM spareai_purchase_orders"
+      maintenance_plans: "SELECT * FROM spareai_maintenance_plans"
+      stockouts:         "SELECT * FROM spareai_stockouts"
+
+server:
+  host: ${SPAREAI_HOST:127.0.0.1}
+  port: ${SPAREAI_PORT:8010}           # change if another app already uses this port
+
+warehouse:
+  path: ${SPAREAI_WAREHOUSE:data/warehouse/spareai.db}
+
+output:
+  dir: outputs
+
+logging:
+  level: ${SPAREAI_LOG_LEVEL:INFO}
+  file: outputs/spareai.log
+
+# ---------------------------------------------------------------------
+# ANALYSIS WINDOW
+# ---------------------------------------------------------------------
+analysis:
+  as_of_date: ${SPAREAI_AS_OF:}        # blank = last consumption date in data
+  history_months: 36
+  forecast_horizon_months: 12
+  backtest_origins: 4                  # rolling origins for model selection
+  backtest_window_months: 3            # cumulative demand window per origin
+  policy_backtest_months: 12           # inventory simulation horizon
+
+forecasting:
+  use_ml: true                         # global gradient-boosting model
+  pm_ratio_prior_weight: 4             # shrinkage for PM consumption ratio
+  single_model_margin: 0.40           # a single model must beat the median-ensemble by 40%
+
+# ---------------------------------------------------------------------
+# CLASSIFICATION
+# ---------------------------------------------------------------------
+classification:
+  abc_thresholds: {A: 0.80, B: 0.95}          # cumulative annual usage value
+  xyz_thresholds: {X: 0.50, Y: 1.00}          # coefficient of variation
+  sbc_adi_cutoff: 1.32                        # Syntetos-Boylan-Croston
+  sbc_cv2_cutoff: 0.49
+  dead_months: 24                             # no issue in N months => dead
+  slow_moving_max_issues_per_year: 2
+  declining_trend_ratio: 0.5                  # last-12m / prior-12m below this
+
+# ---------------------------------------------------------------------
+# SERVICE LEVEL MATRIX  (target FILL RATE by VED criticality x ABC value)
+# V = Vital, E = Essential, D = Desirable
+# ---------------------------------------------------------------------
+service_levels:
+  V: {A: 0.98, B: 0.99, C: 0.995}
+  E: {A: 0.95, B: 0.96, C: 0.97}
+  D: {A: 0.90, B: 0.90, C: 0.85}
+
+# ---------------------------------------------------------------------
+# COSTS
+# ---------------------------------------------------------------------
+costs:
+  holding_rate_annual: 0.22          # capital + storage + obsolescence
+  order_cost_usd: 60                 # admin cost to raise and receive a PO
+  default_downtime_hours_per_stockout: 8
+
+inventory_policy:
+  review_period_days: 7
+  normal_approx_min_mean: 10         # use Normal above this lead-time demand
+  max_cover_months: 12               # cap order qty at N months of demand
+  demand_floor_fraction: 0.5         # moving parts: rate >= 50% of last-12m avg
+  stocking_rule:                     # otherwise: non-stock, buy on demand
+    min_demand_months: 3             # months with demand in history window
+    critical_min_demand_months: 1    # for V/E parts
+  insurance_spares:
+    enabled: true                    # keep 1 unit of vital parts fitted on
+    min_asset_criticality: [A]       # critical assets even with no history
+
+# ---------------------------------------------------------------------
+# RELIABILITY  (Weibull shape beta per category; beta>1 = wear-out)
+# ---------------------------------------------------------------------
+reliability:
+  default_beta: 1.5
+  beta_by_category:
+    Bearings: 1.8
+    Mechanical Seals: 1.4
+    Drive Belts: 2.2
+    Filters: 3.0
+    Gaskets & Seal Kits: 1.6
+    Couplings & Shafts: 2.0
+    Gearbox & Drive Parts: 1.8
+    Spindle & Tooling: 1.7
+    Hydraulic Parts: 1.4
+    Valves: 1.3
+    Electric Motors: 1.3
+    Cooling & Fans: 1.5
+    Heating & Burner: 1.4
+    Sensors: 1.0
+    PLC & Drives: 1.0
+    Electrical Protection: 1.0
+    Lubricants & Consumables: 3.0
+
+# ---------------------------------------------------------------------
+# RECOMMENDATION RULES
+# ---------------------------------------------------------------------
+recommendation:
+  excess_cover_months: 24            # stock beyond N months of need = excess
+  clear_min_value_usd: 25            # ignore clearance below this value
+  raise_levels_ratio: 1.5            # recommended ROP vs current ROP
+  reduce_levels_ratio: 0.5
+  fuzzy_duplicate_threshold: 0.80    # similarity for duplicate part detection
+
+security:
+  api_key: ${SPAREAI_API_KEY:}       # if set, POST endpoints require X-API-Key

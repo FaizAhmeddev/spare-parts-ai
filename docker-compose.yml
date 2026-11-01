@@ -1,0 +1,10 @@
+services:
+  spareai:
+    build: .
+    ports: ["8010:8010"]
+    env_file: [.env.example]
+    volumes:
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./outputs:/app/outputs
+    restart: unless-stopped

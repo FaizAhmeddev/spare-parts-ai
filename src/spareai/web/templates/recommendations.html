@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% from "_macros.html" import rec_table %}
+{% block title %}Recommendations{% endblock %}
+{% block content %}
+<h1>Recommendations</h1>
+<p class="sub">{{ totals.n }} lines · {{ totals.value|money }} value · {{ totals.saving|money }}/yr saving</p>
+<form class="filters" method="get">
+  <select name="action"><option value="">All actions (excl. OK)</option>{% for a in actions %}<option {{ 'selected' if args.get('action')==a }}>{{ a }}</option>{% endfor %}</select>
+  <select name="urgency"><option value="">Any urgency</option>{% for u in ['CRITICAL','HIGH','NORMAL'] %}<option {{ 'selected' if args.get('urgency')==u }}>{{ u }}</option>{% endfor %}</select>
+  <select name="site"><option value="">All sites</option>{% for s in sites %}<option {{ 'selected' if args.get('site')==s }}>{{ s }}</option>{% endfor %}</select>
+  <select name="category"><option value="">All categories</option>{% for c in categories %}<option {{ 'selected' if args.get('category')==c }}>{{ c }}</option>{% endfor %}</select>
+  <input name="q" placeholder="Part ID or description" value="{{ args.get('q','') }}">
+  <button>Filter</button>
+  <a class="btn secondary" href="{{ url_for('export_csv', **args) }}">Export CSV</a>
+  <a class="btn secondary" href="{{ url_for('export_xlsx') }}">Excel report</a>
+</form>
+<div class="card">{{ rec_table(rows) }}
+<div class="pager">{% if page>1 %}<a class="btn secondary" href="{{ url_for('recommendations', **dict(args, page=page-1)) }}">← Prev</a>{% endif %}
+<span class="muted">Page {{ page }} of {{ pages }}</span>
+{% if page<pages %}<a class="btn secondary" href="{{ url_for('recommendations', **dict(args, page=page+1)) }}">Next →</a>{% endif %}</div></div>
+{% endblock %}

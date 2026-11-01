@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% from "_macros.html" import rec_table %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<h1>Spare parts overview</h1>
+<p class="sub">{{ s.parts }} parts · {{ s.sites }} sites · {{ s.part_sites }} part-site combinations analysed · data as of {{ s.as_of_date }}</p>
+<div class="grid k6">
+  <div class="card kpi"><div class="label">Inventory value</div><div class="value">{{ s.inventory_value_usd|money }}</div><div class="hint">on hand, all sites</div></div>
+  <div class="card kpi"><div class="label">Dead / obsolete stock</div><div class="value">{{ s.dead_stock_value_usd|money }}</div><div class="hint">{{ s.dead_stock_pct|pct }} of inventory value</div></div>
+  <div class="card kpi"><div class="label">To clear</div><div class="value">{{ s.clear_value_usd|money }}</div><div class="hint">{{ s.actions.get('CLEAR',0) }} lines · saves {{ s.annual_saving_usd|money }}/yr</div></div>
+  <div class="card kpi"><div class="label">To buy</div><div class="value">{{ s.reorder_value_usd|money }}</div><div class="hint">{{ s.actions.get('REORDER',0) }} reorder + {{ s.actions.get('STOCK',0) }} stock lines</div></div>
+  <div class="card kpi"><div class="label">Critical reorders</div><div class="value" style="color:var(--crit)">{{ s.critical_reorders }}</div><div class="hint">vital/essential parts at risk</div></div>
+  <div class="card kpi"><div class="label">Data issues</div><div class="value">{{ s.dq.get('ERROR',0) }}</div><div class="hint">errors · {{ s.dq.get('WARNING',0) }} warnings</div></div>
+</div>
+
+{% if bt %}
+<div class="card section"><h2>Backtest: if SpareAI had been running since {{ s.backtest_cutoff }}</h2>
+<p class="muted" style="margin-top:-6px">Same 12 months of real consumption replayed through both policies.</p>
+{% set ai = bt[0] %}{% set lg = bt[1] %}
+<table class="compare"><thead><tr><th>Metric</th><th class="num">SpareAI policy</th><th class="num">Current min/max</th><th class="num">Change</th></tr></thead><tbody>
+<tr><td>Fill rate (demand served from stock)</td><td class="num {{ 'better' if ai.fill_rate>lg.fill_rate }}">{{ ai.fill_rate|pct }}</td><td class="num">{{ lg.fill_rate|pct }}</td><td class="num">{{ '%+.1f'|format((ai.fill_rate-lg.fill_rate)*100) }} pts</td></tr>
+<tr><td>Stockout events</td><td class="num {{ 'better' if ai.stockout_events<lg.stockout_events }}">{{ ai.stockout_events|num }}</td><td class="num">{{ lg.stockout_events|num }}</td><td class="num">{{ '%+.0f'|format((ai.stockout_events/lg.stockout_events-1)*100) if lg.stockout_events else '-' }}%</td></tr>
+<tr><td>Average inventory value</td><td class="num {{ 'better' if ai.avg_inventory_value_usd<lg.avg_inventory_value_usd }}">{{ ai.avg_inventory_value_usd|money }}</td><td class="num">{{ lg.avg_inventory_value_usd|money }}</td><td class="num">{{ '%+.0f'|format((ai.avg_inventory_value_usd/lg.avg_inventory_value_usd-1)*100) }}%</td></tr>
+<tr><td>Estimated downtime cost of stockouts</td><td class="num {{ 'better' if ai.est_downtime_cost_usd<lg.est_downtime_cost_usd }}">{{ ai.est_downtime_cost_usd|money }}</td><td class="num">{{ lg.est_downtime_cost_usd|money }}</td><td class="num">{{ '%+.0f'|format((ai.est_downtime_cost_usd/lg.est_downtime_cost_usd-1)*100) if lg.est_downtime_cost_usd else '-' }}%</td></tr>
+<tr><td>Purchase orders raised</td><td class="num {{ 'better' if ai.purchase_orders<lg.purchase_orders }}">{{ ai.purchase_orders|num }}</td><td class="num">{{ lg.purchase_orders|num }}</td><td class="num">{{ '%+.0f'|format((ai.purchase_orders/lg.purchase_orders-1)*100) if lg.purchase_orders else '-' }}%</td></tr>
+</tbody></table>
+<p class="muted" style="margin-bottom:0">Real logged stockouts in that year: {{ val_n }}. SpareAI policy had stock on the day for {{ val_ai }}; the current min/max (simulated) for {{ val_lg }}. <a href="{{ url_for('models') }}">Details →</a></p>
+</div>{% endif %}
+
+<div class="grid c3 section">
+  <div class="card"><h2>Open actions</h2>{{ action_chart|safe }}</div>
+  <div class="card"><h2>Inventory value by movement</h2>{{ movement_chart|safe }}</div>
+  <div class="card"><h2>Clearance value by category</h2>{{ clear_chart|safe }}</div>
+</div>
+
+<div class="card section"><h2>Critical reorders <a class="muted" style="font-weight:400;font-size:13px" href="{{ url_for('recommendations', urgency='CRITICAL') }}">all →</a></h2>{{ rec_table(urgent) }}</div>
+<div class="card section"><h2>Biggest clearance opportunities <a class="muted" style="font-weight:400;font-size:13px" href="{{ url_for('recommendations', action='CLEAR') }}">all →</a></h2>{{ rec_table(clear) }}</div>
+{% endblock %}

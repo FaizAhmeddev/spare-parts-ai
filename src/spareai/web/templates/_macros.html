@@ -1,0 +1,15 @@
+{% macro reason_list(text) -%}
+<ul class="reason" style="padding-left:16px;margin:0">{% for r in (text or '').split(' | ') %}<li>{{ r }}</li>{% endfor %}</ul>
+{%- endmacro %}
+{% macro rec_table(rows, show_reason=True) -%}
+<div class="scroll"><table>
+<thead><tr><th>Action</th><th>Part</th><th>Site</th><th>Description</th><th class="num">Qty</th><th class="num">Value</th><th>Urgency</th><th>Confidence</th>{% if show_reason %}<th>Why</th>{% endif %}</tr></thead>
+<tbody>{% for r in rows %}
+<tr><td><span class="badge b-{{ r.action }}">{{ r.action }}</span><div class="muted" style="font-size:11px">{{ r.sub_action|replace('_',' ')|lower }}</div></td>
+<td><a href="{{ url_for('part', part_id=r.part_id) }}">{{ r.part_id }}</a></td><td>{{ r.site_id }}</td>
+<td>{{ r.description }}<div class="muted" style="font-size:11px">{{ r.category }}</div></td>
+<td class="num">{{ r.recommended_qty }}{% if r.transfer_qty %}<div class="muted" style="font-size:11px">+{{ r.transfer_qty }} transfer</div>{% endif %}</td>
+<td class="num">{{ r.value_usd|money }}</td><td class="urg-{{ r.urgency }}">{{ r.urgency or '' }}</td><td>{{ r.confidence }}</td>
+{% if show_reason %}<td>{{ reason_list(r.reason) }}{% if r.disposal_route %}<div style="font-size:12px;margin-top:3px"><b>Route:</b> {{ r.disposal_route }}</div>{% endif %}</td>{% endif %}</tr>
+{% else %}<tr><td colspan="9" class="muted">Nothing here.</td></tr>{% endfor %}</tbody></table></div>
+{%- endmacro %}

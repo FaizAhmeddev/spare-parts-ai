@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% from "_macros.html" import rec_table %}
+{% block title %}{{ p.part_id }}{% endblock %}
+{% block content %}
+<h1>{{ p.part_id }} · {{ p.description }}</h1>
+<p class="sub">{{ p.part_number }} · {{ p.category }} · {{ p.manufacturer }} · criticality <b>{{ p.criticality_ved }}</b> · {{ p.lifecycle_status }}{% if p.superseded_by_part_id %} → {{ p.superseded_by_part_id }}{% endif %} · unit cost {{ p.unit_cost_usd|money }} · MOQ {{ p.min_order_qty|num }}</p>
+
+<div class="card"><h2>What to do</h2>{{ rec_table(recs) }}</div>
+
+<div class="card section"><h2>Monthly demand: 36 months history + 12 months forecast (all sites)</h2>{{ chart|safe }}
+<div class="legend"><span><i style="background:var(--series-1)"></i>Issued (history)</span><span><i style="background:var(--series-2)"></i>Forecast unplanned</span><span><i style="background:var(--series-3)"></i>Planned by PM schedule</span></div></div>
+
+<div class="card section"><h2>Policy by site: current vs recommended</h2><div class="scroll"><table>
+<thead><tr><th>Site</th><th>Segment</th><th>Pattern</th><th>Movement</th><th>Method</th><th class="num">Fcst/month</th><th class="num">Lead time</th><th class="num">Service</th><th class="num">On hand</th><th class="num">On order</th><th class="num">Current ROP / Max</th><th class="num">New ROP / Max</th><th class="num">Safety stock</th><th class="num">Days cover</th><th class="num">P(stockout)</th></tr></thead>
+<tbody>{% for r in pol %}<tr><td>{{ r.site_id }}</td><td>{{ r.segment }}</td><td>{{ r.demand_pattern|replace('_',' ') }}</td><td>{{ r.movement_class|replace('_',' ') }}</td><td>{{ r.method }}</td>
+<td class="num">{{ r.fc_monthly_rate_used|num(2) }}</td><td class="num">{{ r.lt_mean_days|num }} ± {{ r.lt_std_days|num }}d</td><td class="num">{{ r.service_level|pct }}</td>
+<td class="num">{{ r.on_hand_qty|num }}</td><td class="num">{{ r.on_order_qty|num }}</td><td class="num">{{ r.reorder_point|num }} / {{ r.max_level|num }}</td><td class="num"><b>{{ r.rop_new|num }} / {{ r.max_new|num }}</b></td>
+<td class="num">{{ r.safety_stock|num(1) }}</td><td class="num">{{ r.days_of_cover|num }}</td><td class="num">{{ r.p_stockout_lt|pct }}</td></tr>{% endfor %}</tbody></table></div></div>
+
+<div class="grid c2 section">
+<div class="card"><h2>Fitted on assets ({{ bom|length }})</h2><div class="scroll" style="max-height:340px"><table><thead><tr><th>Asset</th><th>Site</th><th>Crit.</th><th class="num">Qty</th><th class="num">Life used</th><th>Status</th></tr></thead><tbody>
+{% for b in bom %}<tr><td>{{ b.asset_id }} {{ b.asset_name }}</td><td>{{ b.site_id }}</td><td>{{ b.criticality }}</td><td class="num">{{ b.qty_per_asset|num }}</td><td class="num">{{ b.life_used|pct }}</td><td>{{ b.status }}</td></tr>{% else %}<tr><td colspan="6" class="muted">Not on any BOM</td></tr>{% endfor %}</tbody></table></div></div>
+<div class="card"><h2>Maintenance plans needing it ({{ pms|length }})</h2><div class="scroll" style="max-height:340px"><table><thead><tr><th>Plan</th><th>Asset</th><th>Task</th><th class="num">Every</th><th>Next due</th><th class="num">Qty</th></tr></thead><tbody>
+{% for m in pms %}<tr><td>{{ m.pm_plan_id }}</td><td>{{ m.asset_id }}</td><td>{{ m.pm_task }}</td><td class="num">{{ m.frequency_days|num }}d</td><td>{{ m.next_due_date }}</td><td class="num">{{ m.qty_required|num }}</td></tr>{% else %}<tr><td colspan="6" class="muted">No PM plans</td></tr>{% endfor %}</tbody></table></div></div>
+<div class="card"><h2>Recent purchase orders</h2><div class="scroll" style="max-height:340px"><table><thead><tr><th>PO</th><th>Supplier</th><th>Site</th><th>Ordered</th><th class="num">Qty</th><th class="num">Lead time (promised / actual)</th><th>Status</th></tr></thead><tbody>
+{% for o in pos %}<tr><td>{{ o.po_id }}</td><td>{{ o.supplier_id }}</td><td>{{ o.site_id }}</td><td>{{ o.order_date }}</td><td class="num">{{ o.qty_ordered|num }}</td><td class="num">{{ o.promised_lead_time_days|num }} / {{ o.actual_lead_time_days|num }}</td><td>{{ o.status }}</td></tr>{% else %}<tr><td colspan="7" class="muted">No POs</td></tr>{% endfor %}</tbody></table></div></div>
+<div class="card"><h2>Stockout history ({{ so|length }})</h2><div class="scroll" style="max-height:340px"><table><thead><tr><th>Date</th><th>Site</th><th>Asset</th><th class="num">Downtime h</th><th class="num">Cost</th><th>Resolution</th></tr></thead><tbody>
+{% for o in so %}<tr><td>{{ o.event_date }}</td><td>{{ o.site_id }}</td><td>{{ o.asset_id }}</td><td class="num">{{ o.downtime_hours_due_to_stockout|num(1) }}</td><td class="num">{{ o.downtime_cost_usd|money }}</td><td>{{ o.resolution }}</td></tr>{% else %}<tr><td colspan="6" class="muted">No stockouts logged</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}

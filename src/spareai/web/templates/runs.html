@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% block title %}Runs{% endblock %}
+{% block content %}
+<h1>Pipeline runs</h1><p class="sub">Every run is stored with its inputs' row counts and results, so any recommendation can be traced back.</p>
+<div class="card"><form method="post" action="{{ url_for('api_trigger') }}" class="filters">
+<input type="hidden" name="go" value="1">{% if config_key %}<input name="api_key" placeholder="API key">{% endif %}
+<button {{ 'disabled' if run_state.running }}>{{ 'Running…' if run_state.running else 'Run analysis now' }}</button>
+{% if run_state.last_error %}<span style="color:var(--crit)">Last error: {{ run_state.last_error }}</span>{% endif %}
+<span class="muted">Re-reads the configured data source (Excel today, ERP database later).</span></form>
+<table><thead><tr><th>Run</th><th>Started</th><th>Finished</th><th>Status</th><th>Data as of</th><th>Source</th><th>Error</th></tr></thead><tbody>
+{% for r in runs %}<tr><td>{{ r.run_id }}</td><td>{{ r.started_at }}</td><td>{{ r.finished_at or '' }}</td><td><span class="badge b-{{ 'CLEAR' if r.status=='SUCCESS' else ('REORDER' if r.status=='FAILED' else 'STOCK') }}">{{ r.status }}</span></td><td>{{ r.as_of_date }}</td><td class="muted">{{ r.source }}</td><td class="muted">{{ (r.error or '')[-160:] }}</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

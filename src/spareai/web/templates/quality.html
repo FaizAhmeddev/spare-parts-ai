@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block title %}Data quality{% endblock %}
+{% block content %}
+<h1>Data quality</h1><p class="sub">Checked on every run before any analytics. Fix errors at source to improve recommendations.</p>
+<div class="grid c2"><div class="card"><h2>Summary</h2><table><thead><tr><th>Severity</th><th>Check</th><th class="num">Issues</th></tr></thead><tbody>
+{% for c in counts %}<tr><td><span class="badge b-{{ c.severity }}">{{ c.severity }}</span></td><td><a href="#{{ c.check }}">{{ c.check|replace('_',' ') }}</a></td><td class="num">{{ c.n }}</td></tr>{% endfor %}</tbody></table></div>
+<div class="card"><h2>Filter</h2><form class="filters"><select name="severity"><option value="">All</option>{% for s in ['ERROR','WARNING','INFO'] %}<option {{ 'selected' if sev==s }}>{{ s }}</option>{% endfor %}</select><button>Apply</button></form>
+<p class="muted">ERROR = wrong data that changes decisions (duplicates, orphan keys, POs on dead parts). WARNING = needs attention. INFO = context.</p></div></div>
+<div class="card section"><div class="scroll"><table><thead><tr><th>Severity</th><th>Check</th><th>Table</th><th>Key</th><th>Detail</th><th>Suggested fix</th></tr></thead><tbody>
+{% for r in rows %}<tr id="{{ r.check }}"><td><span class="badge b-{{ r.severity }}">{{ r.severity }}</span></td><td>{{ r.check|replace('_',' ') }}</td><td>{{ r.table }}</td><td>{{ r.key }}</td><td>{{ r.detail }}</td><td class="muted">{{ r.recommendation }}</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}
