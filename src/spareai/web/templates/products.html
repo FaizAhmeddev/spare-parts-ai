@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% block title %}Products{% endblock %}
+{% block content %}
+<h1>Products</h1>
+<p class="sub">Click a product to see how many pieces were used and how many are needed.</p>
+<div class="chips">
+  <a class="chip {{ 'on' if not status }}" href="{{ url_for('products', q=q) }}">All <b>{{ counts.values()|sum }}</b></a>
+  {% for k, v in statuses.items() %}<a class="chip {{ 'on' if status==k }}" href="{{ url_for('products', status=k, q=q) }}"><span class="badge {{ v[1] }}">{{ v[0] }}</span> <b>{{ counts.get(k, 0) }}</b></a>{% endfor %}
+</div>
+<form class="filters" method="get"><input type="hidden" name="status" value="{{ status }}">
+  <input name="q" value="{{ q }}" placeholder="Search part ID or name" style="min-width:280px"><button>Search</button></form>
+<div class="card"><div class="scroll" style="max-height:none"><table>
+<thead><tr><th>Part</th><th>Name</th><th class="num">Used last month<br><span class="muted">{{ lm }}</span></th>
+<th class="num">Used last 12 months<br><span class="muted">{{ ly }}</span></th><th class="num">Used last 3 years</th>
+<th class="num">Required next 12 months<br><span class="muted">{{ ny }}</span></th><th class="num">In stock</th><th>Status</th></tr></thead>
+<tbody>{% for r in rows %}
+<tr onclick="location.href='{{ url_for('product', part_id=r.part_id) }}'" style="cursor:pointer">
+<td><a href="{{ url_for('product', part_id=r.part_id) }}">{{ r.part_id }}</a></td>
+<td class="wrap">{{ r.description }}<div class="muted" style="font-size:11px">{{ r.category }}</div></td>
+<td class="num">{{ r.last_month|num }}</td><td class="num">{{ r.last_year|num }}</td><td class="num">{{ r.last_3_years|num }}</td>
+<td class="num"><b>{{ r.required_next_year|num }}</b></td><td class="num">{{ r.on_hand_qty|num }}</td>
+<td><span class="badge {{ r.status_css }}">{{ r.status_label }}</span>
+{% if r.status=='ORDER' %}<span class="muted" style="font-size:12px"> {{ r.order_qty|num }} pcs</span>{% elif r.status=='EXCESS' %}<span class="muted" style="font-size:12px"> clear {{ r.clear_qty|num }}</span>{% endif %}</td></tr>
+{% else %}<tr><td colspan="8" class="muted">No products found.</td></tr>{% endfor %}</tbody></table></div></div>
+{% endblock %}

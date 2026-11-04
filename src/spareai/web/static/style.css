@@ -61,3 +61,7 @@ dl.facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0} dl.f
 .heat td{text-align:center;font-weight:600}
 @media (max-width:640px){ main{padding:16px} .c2,.c3{grid-template-columns:1fr} header .meta{display:none} }
 .scroll td{white-space:nowrap} .scroll td .reason, .scroll td.wrap{white-space:normal}
+.subnav{display:flex;gap:16px;padding:8px 24px;background:var(--surface);border-bottom:1px solid var(--border);font-size:13px;flex-wrap:wrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text)}
+.chip.on{border-color:var(--series-1);box-shadow:0 0 0 1px var(--series-1)} .chip:hover{text-decoration:none}

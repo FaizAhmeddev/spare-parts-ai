@@ -17,7 +17,7 @@ from flask import (Flask, abort, jsonify, redirect, render_template, request,
 
 from ..config import Settings, load_settings
 from ..storage.warehouse import Warehouse
-from . import charts
+from . import charts, simple
 
 log = logging.getLogger(__name__)
 ACTIONS = ["REORDER", "STOCK", "CLEAR", "REVIEW", "ADJUST", "OK"]
@@ -126,7 +126,53 @@ def create_app(settings: Settings | None = None) -> Flask:
             return "-"
 
     # -------------------------------------------------------------- pages
+        # ------------------------------------------------------- simple view
     @app.route("/")
+    def products():
+        run = latest()
+        if not run:
+            return render_template("empty.html")
+        tbl = simple.product_table(table("monthly_demand", run), table("forecast", run),
+                                   table("policy", run), table("recommendations", run),
+                                   wh.read("ref_part_master"), run["as_of_date"])
+        counts = tbl["status"].value_counts()
+        q = (request.args.get("q") or "").strip().lower()
+        status = request.args.get("status", "")
+        if q:
+            tbl = tbl[tbl["part_id"].str.lower().str.contains(q) |
+                      tbl["description"].fillna("").str.lower().str.contains(q)]
+        if status:
+            tbl = tbl[tbl["status"] == status]
+        w = simple.windows(run["as_of_date"])
+        return render_template("products.html", rows=_clean(tbl), q=q, status=status,
+                               counts=counts.to_dict(), statuses=simple.STATUS,
+                               lm=simple.label(w["last_month"]), ly=simple.label(w["last_year"]),
+                               ny=simple.label(w["next_year"]))
+
+    @app.route("/product/<part_id>")
+    def product(part_id):
+        run = latest()
+        if not run:
+            return redirect(url_for("products"))
+        pm = wh.read("ref_part_master", where="part_id = ?", params=(part_id,))
+        if pm.empty:
+            abort(404)
+        d = simple.product_detail(part_id, table("monthly_demand", run, where="part_id = ?", params=(part_id,)),
+                                  table("forecast", run, where="part_id = ?", params=(part_id,)),
+                                  run["as_of_date"])
+        pol = table("policy", run, where="part_id = ?", params=(part_id,))
+        recs = table("recommendations", run, where="part_id = ?", params=(part_id,))
+        sites = d["by_site"].join(pol.set_index("site_id")[["on_hand_qty", "on_order_qty", "rop_new", "max_new"]],
+                                  how="outer").fillna(0).reset_index().rename(columns={"index": "site_id"})
+        year_chart = charts.year_bars(d["yearly"], (d["required_label"], d["required"]))
+        month_chart = charts.demand_chart(d["monthly_used"], d["monthly_fc"])
+        return render_template("product.html", p=_clean(pm)[0], d=d, year_chart=year_chart,
+                               month_chart=month_chart, sites=_clean(sites),
+                               recs=_clean(recs[recs["action"] != "OK"]),
+                               stock=float(pol["on_hand_qty"].sum()) if len(pol) else 0.0)
+
+    # ----------------------------------------------------- advanced pages
+    @app.route("/advanced")
     def overview():
         run = latest()
         if not run:

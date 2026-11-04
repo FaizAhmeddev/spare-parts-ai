@@ -84,3 +84,30 @@ def demand_chart(hist: list[tuple[str, float]], fc: list[tuple[str, float, float
             out.append(f'<text x="{left + i * step:.1f}" y="{height - 8}" class="axis">{m}</text>')
     out.append("</svg>")
     return "".join(out)
+
+
+
+def year_bars(used: list[tuple[str, float]], required: tuple[str, float],
+              width: int = 640, height: int = 280) -> str:
+    """3 yearly 'used' bars + 1 'required next 12 months' bar, value on top."""
+    items = [(lab, v, "--series-1") for lab, v in used] + [(required[0], required[1], "--series-2")]
+    vmax = max(max(v for _, v, _ in items), 1)
+    top, bottom, left = 30, 56, 10
+    ph = height - top - bottom
+    slot = (width - left * 2) / len(items)
+    bw = min(slot * 0.55, 90)
+    out = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" aria-label="pieces used per year and required next year">',
+           f'<line x1="{left}" x2="{width - left}" y1="{top + ph}" y2="{top + ph}" class="grid"/>']
+    for i, (lab, v, col) in enumerate(items):
+        cx = left + slot * i + slot / 2
+        hgt = ph * v / vmax
+        y = top + ph - hgt
+        name = "Required" if i == len(items) - 1 else "Used"
+        out.append(f'<g><title>{name} {escape(lab)}: {v:,.0f} pieces</title>'
+                   f'<rect x="{cx - slot / 2:.1f}" y="{top}" width="{slot:.1f}" height="{ph}" fill="transparent"/>'
+                   f'<rect x="{cx - bw / 2:.1f}" y="{y:.1f}" width="{bw:.1f}" height="{max(hgt, 1):.1f}" rx="4" style="fill:var({col})"/>'
+                   f'<text x="{cx:.1f}" y="{y - 8:.1f}" text-anchor="middle" class="val" style="font-size:15px;font-weight:600">{v:,.0f}</text>'
+                   f'<text x="{cx:.1f}" y="{top + ph + 20}" text-anchor="middle" class="axis" style="font-size:12px">{name}</text>'
+                   f'<text x="{cx:.1f}" y="{top + ph + 36}" text-anchor="middle" class="axis" style="font-size:11px">{escape(lab)}</text></g>')
+    out.append("</svg>")
+    return "".join(out)
